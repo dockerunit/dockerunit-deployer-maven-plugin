@@ -1,0 +1,133 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.github.dockerunit</groupId>
+    <artifactId>dockerunit-parent</artifactId>
+    <version>2.0.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>dockerunit-deployer-maven-plugin</artifactId>
+  <version>2.0.0-SNAPSHOT</version>
+  <packaging>maven-plugin</packaging>
+
+  <name>dude-maven-plugin</name>
+  <description>Maven plugin for running Dockerunit services</description>
+  <url>https://github.com/dockerunit/dockerunit-deployer</url>
+
+  <developers>
+    <developer>
+      <name>Quirino Zagarese</name>
+    </developer>
+    <developer>
+      <name>Pedro Nuno Santos</name>
+    </developer>
+    <developer>
+      <name>Vincenzo Candela</name>
+    </developer>
+    <developer>
+      <name>Francesco Sorice</name>
+    </developer>
+  </developers>
+
+  <properties>
+    <junit.version>4.12</junit.version>
+    <dockerunit.version>2.0.0-SNAPSHOT</dockerunit.version>
+    <lombok.version>1.16.6</lombok.version>
+  </properties>
+
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-plugin-api</artifactId>
+      <version>3.0</version>
+    </dependency>
+ 
+    <!-- dependencies to annotations -->
+    <dependency>
+      <groupId>org.apache.maven.plugin-tools</groupId>
+      <artifactId>maven-plugin-annotations</artifactId>
+      <version>3.6.0</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-plugin-api</artifactId>
+      <version>3.6.0</version>
+    </dependency>
+
+    <!-- Dockerunit dependencies -->
+    <dependency>
+      <groupId>com.github.dockerunit</groupId>
+      <artifactId>dockerunit-core</artifactId>
+      <version>${dockerunit.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.github.dockerunit</groupId>
+      <artifactId>dockerunit-consul</artifactId>
+      <version>${dockerunit.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>1.18.6</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-core</artifactId>
+      <version>3.3.9</version>
+    </dependency>
+
+    <!-- Spring Shell dependencies -->
+    <dependency>
+      <groupId>org.springframework.shell</groupId>
+      <artifactId>spring-shell-starter</artifactId>
+      <version>2.0.1.RELEASE</version>
+    </dependency>
+
+
+    <!-- Depend on JCommander to use JCommander API -->
+    <dependency>
+      <groupId>com.beust</groupId>
+      <artifactId>jcommander</artifactId>
+      <version>1.48</version>
+    </dependency>
+
+  </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-plugin-plugin</artifactId>
+        <version>3.6.0</version>
+        <configuration>
+          <goalPrefix>dude</goalPrefix>
+        </configuration>
+        <executions>
+          <execution>
+            <id>default-descriptor</id>
+            <goals>
+              <goal>descriptor</goal>
+            </goals>
+            <phase>process-classes</phase>
+          </execution>
+          <execution>
+            <id>help-descriptor</id>
+            <goals>
+              <goal>helpmojo</goal>
+            </goals>
+            <phase>process-classes</phase>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
