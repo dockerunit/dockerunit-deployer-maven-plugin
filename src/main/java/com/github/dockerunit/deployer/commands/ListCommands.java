@@ -1,46 +1,67 @@
 package com.github.dockerunit.deployer.commands;
 
+import com.github.dockerunit.core.Service;
+import com.github.dockerunit.core.ServiceContext;
+import com.github.dockerunit.core.ServiceInstance;
+import com.github.dockerunit.deployer.ServiceContextProvider;
+import com.github.dockerunit.deployer.util.TableFactory;
 import org.springframework.shell.standard.ShellComponent;
 import org.springframework.shell.standard.ShellMethod;
-import org.springframework.shell.table.*;
+import org.springframework.shell.table.Table;
 
-import java.util.Random;
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @ShellComponent
 public class ListCommands {
 
-    private static final String TEXT = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt " +
-            "ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco " +
-            "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in " +
-            "voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat " +
-            "non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
 
 
-    @ShellMethod(value = "Lists the currently running services", key = {"get-svc"})
+    @ShellMethod(value = "Lists the currently running services", key = {"get-svc", "list-svc"})
     public Table listServices(){
-        String[][] data = new String[3][3];
-        TableModel model = new ArrayTableModel(data);
-        TableBuilder tableBuilder = new TableBuilder(model);
+        ServiceContext svcContext = ServiceContextProvider.getSvcContext();
+        List<Service> services = svcContext.getServices().stream().collect(Collectors.toList());
+        String[][] data = new String[services.size()][2];
 
-        Random r = new Random();
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                data[i][j] = TEXT.substring(0, TEXT.length() / 2 + r.nextInt(TEXT.length() / 2));
-                tableBuilder.on(at(i, j)).addAligner(SimpleHorizontalAligner.values()[j]);
-                tableBuilder.on(at(i, j)).addAligner(SimpleVerticalAligner.values()[i]);
+        for (int i = 0; i < services.size(); i++) {
+                data[i][0] = services.get(i).getName();
+                data[i][1] = services.get(i).getInstances().size() + "";
+        }
+
+        return TableFactory.createTable(new String[] {"name", "replicas"}, data );
+    }
+
+    @ShellMethod(value = "Lists the currently running service instances", key = {"get-instances", "list-instances"})
+    public Table listInstances(){
+        ServiceContext svcContext = ServiceContextProvider.getSvcContext();
+        List<Service> services = svcContext.getServices().stream().collect(Collectors.toList());
+        int allInstances = services.stream()
+                .map(svc -> svc.getInstances())
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList())
+                .size();
+
+        String[] tableHeader = {"svc", "container-name", "container-id", "ip", "port"};
+
+        String[][] data = new String[allInstances][tableHeader.length];
+
+        for (int i = 0; i < services.size(); i++) {
+            Service s = services.get(i);
+            List<ServiceInstance> instances = s.getInstances().stream().collect(Collectors.toList());
+            for(int j = 0; j < instances.size(); j++) {
+                ServiceInstance si = instances.get(j);
+                data[i + j] = new String[] {s.getName(),
+                        si.getContainerName(),
+                        si.getContainerId().substring(0, 12),
+                        si.getIp(),
+                        si.getPort() + ""};
             }
         }
 
-        return tableBuilder.addFullBorder(BorderStyle.fancy_light).build();
-    }
 
-    public static CellMatcher at(final int theRow, final int col) {
-        return new CellMatcher() {
-            @Override
-            public boolean matches(int row, int column, TableModel model) {
-                return row == theRow && column == col;
-            }
-        };
+        return TableFactory.createTable(tableHeader, data );
     }
 
 }

@@ -1,23 +1,21 @@
 package com.github.dockerunit.deployer;
 
 import com.github.dockerunit.deployer.spring.ShellLauncher;
-import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.*;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
-/**
- * @requiresDependencyResolution test
- *
- */
 @Mojo(name = "run", defaultPhase = LifecyclePhase.TEST,
         requiresDependencyResolution = ResolutionScope.TEST,
 requiresProject = true)
@@ -43,40 +41,22 @@ public class PluginRunner extends AbstractMojo {
                     "using the <className> tag inside the plugin <configuration>.");
         }
 
-        ClassLoader loader = initialiseClassLoader();
-        try {
-            svcClass = loader.loadClass(className);
-        } catch (ClassNotFoundException e) {
-            throw new MojoFailureException("Cannot find class " + className, e);
-        }
 
         try {
-            ShellLauncher.run(new String[]{ className });
+            List<String> args = new ArrayList<>();
+            args.add(className);
+            List<String> testClasspathElements = project.getTestClasspathElements();
+            args.addAll(testClasspathElements.stream()
+                    .map(elem -> Arrays.asList("--classpath", elem))
+                    .flatMap(Collection::stream)
+                    .collect(Collectors.toList()));
+
+            ShellLauncher.run(args.toArray(new String[]{}));
         } catch (Exception e) {
             throw new MojoFailureException("Could not initialise shell.", e);
         }
-
     }
 
-    private ClassLoader initialiseClassLoader() throws MojoFailureException {
-        List<String> runtimeClasspathElements = null;
-        try {
-            runtimeClasspathElements = project.getTestClasspathElements();
-        } catch (DependencyResolutionRequiredException e) {
-            throw new MojoFailureException(e.getMessage(), e);
-        }
-        URL[] runtimeUrls = new URL[runtimeClasspathElements.size()];
-        for (int i = 0; i < runtimeClasspathElements.size(); i++) {
-            String element = (String) runtimeClasspathElements.get(i);
-            try {
-                runtimeUrls[i] = new File(element).toURI().toURL();
-            } catch (MalformedURLException e) {
-                throw new MojoFailureException(e.getMessage(), e);
-            }
-        }
-        URLClassLoader newLoader = new URLClassLoader(runtimeUrls,
-                Thread.currentThread().getContextClassLoader());
-        return  newLoader;
-    }
+
 
 }
