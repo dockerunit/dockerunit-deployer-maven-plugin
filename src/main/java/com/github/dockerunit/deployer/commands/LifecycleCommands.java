@@ -10,15 +10,20 @@ import com.github.dockerunit.core.internal.service.DefaultServiceContext;
 import com.github.dockerunit.deployer.DockerUnitSetup;
 import com.github.dockerunit.deployer.ServiceContextProvider;
 import com.github.dockerunit.deployer.SvcClassLoader;
+import org.jline.reader.LineReader;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.shell.ExitRequest;
 import org.springframework.shell.standard.ShellComponent;
 import org.springframework.shell.standard.ShellMethod;
+import org.springframework.shell.standard.ShellOption;
+import org.springframework.shell.standard.commands.Quit;
 
 import javax.annotation.PostConstruct;
 import java.util.HashSet;
 
 @ShellComponent
-public class LifecycleCommands {
+public class LifecycleCommands implements Quit.Command {
 
 
     @Autowired
@@ -30,21 +35,26 @@ public class LifecycleCommands {
     @Autowired
     private UsageDescriptorBuilder descriptorBuilder;
 
+    @Autowired
+    @Lazy
+    private LineReader lineReader;
 
     private boolean running = false;
 
 
-    @ShellMethod(value = "Shuts down the running services and the discovery provider.", key = {"shutdown", "halt"})
+    @ShellMethod(value = "Shuts down the running services and the discovery provider.", key = {"shutdown", "halt", "stop"})
     public void shutdown() {
         ServiceContext context = ServiceContextProvider.getSvcContext();
         ServiceContext discoveryContext = ServiceContextProvider.getDiscoveryContext();
         if (context != null) {
             ServiceContext cleared = contextBuilder.clearContext(context);
-            discoveryProvider.clearRegistry(cleared, new DefaultServiceContext(new HashSet<>()));
+            ServiceContext clearedRegistryContext = discoveryProvider.clearRegistry(cleared, new DefaultServiceContext(new HashSet<>()));
+            ServiceContextProvider.setSvcContext(clearedRegistryContext);
         }
 
         if (discoveryContext != null) {
-            contextBuilder.clearContext(discoveryContext);
+            ServiceContext clearedDiscoveryContext = contextBuilder.clearContext(discoveryContext);
+            ServiceContextProvider.setDiscoveryContext(clearedDiscoveryContext);
         }
 
         running = false;
@@ -81,6 +91,33 @@ public class LifecycleCommands {
     public void restart() {
         shutdown();
         start();
+    }
+
+
+    @ShellMethod(value = "Exits the DUDe shell.", key = {"exit", "quit"})
+    public void quit(@ShellOption(value = {"-f", "--force"}) boolean force) {
+        if(force || askYesNo("Shutdown running containers?")) {
+            shutdown();
+        }
+        throw new ExitRequest();
+    }
+
+
+    private boolean askYesNo(String question) {
+        while (true) {
+            String backup = ask(String.format("%s (y/n): ", question));
+            if ("y".equals(backup)) {
+                return true;
+            }
+            if ("n".equals(backup)) {
+                return false;
+            }
+        }
+    }
+
+    private String ask(String question) {
+        question = "\n" + question + "> ";
+        return lineReader.readLine(question);
     }
 
 }

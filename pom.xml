@@ -93,14 +93,6 @@
       <version>2.0.1.RELEASE</version>
     </dependency>
 
-
-    <!-- Depend on JCommander to use JCommander API -->
-    <dependency>
-      <groupId>com.beust</groupId>
-      <artifactId>jcommander</artifactId>
-      <version>1.48</version>
-    </dependency>
-
   </dependencies>
   <build>
     <plugins>

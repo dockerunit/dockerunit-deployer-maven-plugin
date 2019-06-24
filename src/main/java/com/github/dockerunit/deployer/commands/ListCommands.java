@@ -43,7 +43,7 @@ public class ListCommands {
                 .collect(Collectors.toList())
                 .size();
 
-        String[] tableHeader = {"svc", "container-name", "container-id", "gateway-ip", "container-ip", "port"};
+        String[] tableHeader = {" svc ", " container-name ", " container-id ", " gateway-ip ", " container-ip ", " port ", " status "};
 
         String[][] data = new String[allInstances][tableHeader.length];
 
@@ -57,7 +57,8 @@ public class ListCommands {
                         si.getContainerId().substring(0, 12),
                         si.getGatewayIp(),
                         si.getContainerIp(),
-                        si.getPort() + ""};
+                        si.getPort() + "",
+                        si.getStatus().toString()};
             }
         }
 
