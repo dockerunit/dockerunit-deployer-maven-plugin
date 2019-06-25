@@ -24,7 +24,7 @@ public class TableFactory {
         for(int i = 0; i < content.length; i++) {
             for(int j = 0; j < content[i].length; j++) {
                 content[i][j] = content[i][j] == null ? "" : content[i][j];
-                tableBuilder.on(at(i, j)).addAligner(getHorizontalAligner(content[i].length, j));
+                tableBuilder.on(at(i, j)).addAligner(SimpleHorizontalAligner.center);
                 tableBuilder.on(at(i, j)).addAligner(getVerticalAligner(content.length, i));
             }
         }
@@ -40,17 +40,6 @@ public class TableFactory {
             return SimpleVerticalAligner.middle;
         }
     }
-
-    private static SimpleHorizontalAligner getHorizontalAligner(int length, int j) {
-        if(j == 0) {
-            return SimpleHorizontalAligner.left;
-        } else if(j == length -1) {
-            return SimpleHorizontalAligner.right;
-        } else {
-            return SimpleHorizontalAligner.center;
-        }
-    }
-
 
     public static CellMatcher at(final int theRow, final int col) {
         return new CellMatcher() {

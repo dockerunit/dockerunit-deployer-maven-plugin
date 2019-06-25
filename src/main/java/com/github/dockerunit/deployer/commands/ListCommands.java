@@ -27,8 +27,8 @@ public class ListCommands {
         String[][] data = new String[services.size()][2];
 
         for (int i = 0; i < services.size(); i++) {
-                data[i][0] = services.get(i).getName();
-                data[i][1] = services.get(i).getInstances().size() + "";
+                data[i][0] = String.format(" %s ", services.get(i).getName());
+                data[i][1] = String.format(" %d ", services.get(i).getInstances().size());
         }
 
         return TableFactory.createTable(new String[] {"name", "replicas"}, data );
@@ -48,7 +48,7 @@ public class ListCommands {
                 .collect(Collectors.toList())
                 .size();
 
-        String[] tableHeader = {" svc ", " container-name ", " container-id ", " gateway-ip ", " container-ip ", " port ", " status "};
+        String[] tableHeader = {"svc", "container-name", "container-id", "gateway-ip", "container-ip", "port", "status"};
 
         String[][] data = new String[allInstances][tableHeader.length];
 
@@ -57,13 +57,15 @@ public class ListCommands {
             List<ServiceInstance> instances = s.getInstances().stream().collect(Collectors.toList());
             for(int j = 0; j < instances.size(); j++) {
                 ServiceInstance si = instances.get(j);
-                data[i + j] = new String[] {s.getName(),
-                        si.getContainerName(),
-                        si.getContainerId().substring(0, 12),
-                        si.getGatewayIp(),
-                        si.getContainerIp(),
-                        si.getPort() + "",
-                        si.getStatus().toString()};
+                data[i + j] = new String[] {
+                        String.format(" %s ", s.getName()),
+                        String.format(" %s ", si.getContainerName()),
+                        String.format(" %s ", si.getContainerId().substring(0, 12)),
+                        String.format(" %s ", si.getGatewayIp()),
+                        String.format(" %s ", si.getContainerIp()),
+                        String.format(" %d ", si.getPort()),
+                        String.format(" %s ", si.getStatus().toString())
+                };
             }
         }
 
