@@ -7,6 +7,7 @@ import com.github.dockerunit.deployer.ServiceContextProvider;
 import com.github.dockerunit.deployer.util.TableFactory;
 import org.springframework.shell.standard.ShellComponent;
 import org.springframework.shell.standard.ShellMethod;
+import org.springframework.shell.standard.ShellOption;
 import org.springframework.shell.table.Table;
 
 import java.util.Collection;
@@ -34,9 +35,13 @@ public class ListCommands {
     }
 
     @ShellMethod(value = "Lists the currently running service instances", key = {"get-instances", "list-instances"})
-    public Table listInstances(){
+    public Table listInstances(@ShellOption("--svc") String svcName){
         ServiceContext svcContext = ServiceContextProvider.getSvcContext();
-        List<Service> services = svcContext.getServices().stream().collect(Collectors.toList());
+        List<Service> services = svcContext.getServices()
+                .stream()
+                .filter(s -> svcName == null ? true : svcName.equals(s.getName()))
+                .collect(Collectors.toList());
+
         int allInstances = services.stream()
                 .map(svc -> svc.getInstances())
                 .flatMap(Collection::stream)
