@@ -35,7 +35,7 @@ public class ListCommands {
     }
 
     @ShellMethod(value = "Lists the currently running service instances", key = {"get-instances", "list-instances"})
-    public Table listInstances(@ShellOption("--svc") String svcName){
+    public Table listInstances(@ShellOption(value = "--svc", defaultValue = ShellOption.NULL) String svcName){
         ServiceContext svcContext = ServiceContextProvider.getSvcContext();
         List<Service> services = svcContext.getServices()
                 .stream()
@@ -48,7 +48,7 @@ public class ListCommands {
                 .collect(Collectors.toList())
                 .size();
 
-        String[] tableHeader = {"svc", "container-name", "container-id", "gateway-ip", "container-ip", "port", "status"};
+        String[] tableHeader = {"svc", "container-name", "container-id", "gateway", "container-ip", "port", "status"};
 
         String[][] data = new String[allInstances][tableHeader.length];
 
@@ -59,7 +59,7 @@ public class ListCommands {
                 ServiceInstance si = instances.get(j);
                 data[i + j] = new String[] {
                         String.format(" %s ", s.getName()),
-                        String.format(" %s ", si.getContainerName()),
+                        String.format(" %s ", si.getContainerName().substring(1)),
                         String.format(" %s ", si.getContainerId().substring(0, 12)),
                         String.format(" %s ", si.getGatewayIp()),
                         String.format(" %s ", si.getContainerIp()),
