@@ -269,7 +269,8 @@ public class LifecycleCommands implements Quit.Command {
         return containerName.concat("-")
                 .concat(Base64.getEncoder().encodeToString(bytes)
                 .replaceAll("=", "0")
-                .replaceAll("\\+", "1"));
+                .replaceAll("\\+", "1")
+                .replaceAll("/", "2"));
     }
 
 }
