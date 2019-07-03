@@ -5,12 +5,15 @@ import com.github.dockerunit.core.ServiceContext;
 import com.github.dockerunit.core.ServiceInstance;
 import com.github.dockerunit.core.discovery.DiscoveryProvider;
 import com.github.dockerunit.core.internal.ServiceContextBuilder;
+import com.github.dockerunit.core.internal.ServiceDescriptor;
 import com.github.dockerunit.core.internal.UsageDescriptor;
+import com.github.dockerunit.core.internal.reflect.DefaultServiceDescriptor;
 import com.github.dockerunit.core.internal.reflect.UsageDescriptorBuilder;
 import com.github.dockerunit.core.internal.service.DefaultServiceContext;
 import com.github.dockerunit.deployer.DockerUnitSetup;
 import com.github.dockerunit.deployer.ServiceContextProvider;
 import com.github.dockerunit.deployer.SvcClassLoader;
+import org.hibernate.validator.constraints.NotEmpty;
 import org.jline.reader.LineReader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -21,9 +24,17 @@ import org.springframework.shell.standard.ShellOption;
 import org.springframework.shell.standard.commands.Quit;
 
 import javax.annotation.PostConstruct;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 @ShellComponent
 public class LifecycleCommands implements Quit.Command {
@@ -58,15 +69,6 @@ public class LifecycleCommands implements Quit.Command {
 
         running = false;
     }
-
-    private void stopDiscovery() {
-        ServiceContext discoveryContext = ServiceContextProvider.getDiscoveryContext();
-        if (discoveryContext != null) {
-            ServiceContext clearedDiscoveryContext = contextBuilder.clearContext(discoveryContext);
-            ServiceContextProvider.setDiscoveryContext(clearedDiscoveryContext);
-        }
-    }
-
 
     @ShellMethod(value = "Starts the discovery provider and the services.", key = {"start", "run", "wake-up"})
     @PostConstruct
@@ -118,12 +120,50 @@ public class LifecycleCommands implements Quit.Command {
         shutSvcDown(s);
         stopDiscovery();
         startDiscovery();
-        startSvc(s);
+        startSvc(s.getDescriptor());
 
     }
 
-    private void startSvc(Service s) {
-        ServiceContext context = contextBuilder.buildServiceContext(s.getDescriptor());
+    @ShellMethod(value = "Exits the DUDe shell.", key = {"exit", "quit"})
+    public void quit(@ShellOption(value = {"-f", "--force"}) boolean force) {
+        if (force || askYesNo("Shutdown running containers?")) {
+            shutdown();
+        }
+        throw new ExitRequest();
+    }
+
+    @ShellMethod(value = "Scales the specified service up/down to the desired number of replicas", key = {"scale"})
+    public void scale(@ShellOption("--replicas") @Min(value = 1, message = "You can scale services down to 1 instance")
+                      @Max(value = 10, message = "You can scale services up to 10 instances") int replicas,
+                      @NotNull @NotEmpty String svc) {
+        ServiceContext svcContext = ServiceContextProvider.getSvcContext();
+        Service s = svcContext.getService(svc);
+        if (s == null) {
+            System.out.println(String.format("Could not find service %s dude.", svc));
+            return;
+        }
+
+        if(s.getInstances().size() > replicas) {
+            scaleDown(s, replicas);
+        } else if(s.getInstances().size() < replicas) {
+            scaleUp(s, replicas);
+        } else {
+            System.out.println(String.format("Nothing to be done dude. %s has already %d running instances.", svc, replicas));
+        }
+
+
+    }
+
+    private void stopDiscovery() {
+        ServiceContext discoveryContext = ServiceContextProvider.getDiscoveryContext();
+        if (discoveryContext != null) {
+            ServiceContext clearedDiscoveryContext = contextBuilder.clearContext(discoveryContext);
+            ServiceContextProvider.setDiscoveryContext(clearedDiscoveryContext);
+        }
+    }
+
+    private void startSvc(ServiceDescriptor sd) {
+        ServiceContext context = contextBuilder.buildServiceContext(sd);
         ServiceContext postDiscoveryContext = discoveryProvider.populateRegistry(
                 ServiceContextProvider.getSvcContext().merge(context));
         ServiceContextProvider.setSvcContext(postDiscoveryContext);
@@ -141,16 +181,6 @@ public class LifecycleCommands implements Quit.Command {
                 .collect(Collectors.toSet())));
     }
 
-
-    @ShellMethod(value = "Exits the DUDe shell.", key = {"exit", "quit"})
-    public void quit(@ShellOption(value = {"-f", "--force"}) boolean force) {
-        if (force || askYesNo("Shutdown running containers?")) {
-            shutdown();
-        }
-        throw new ExitRequest();
-    }
-
-
     private boolean askYesNo(String question) {
         while (true) {
             String backup = ask(String.format("%s (y/n): ", question));
@@ -166,6 +196,80 @@ public class LifecycleCommands implements Quit.Command {
     private String ask(String question) {
         question = "\n" + question + "> ";
         return lineReader.readLine(question);
+    }
+
+
+
+    private void scaleUp(Service s, int replicas) {
+        boolean randomise = s.getDescriptor().getContainerName() != null
+                && !s.getDescriptor().getContainerName().isEmpty();
+
+        ServiceDescriptor newDescriptor = newDescriptor(s.getDescriptor(),
+                replicas - s.getInstances().size(),
+                randomise);
+        System.out.print(String.format("Scaling %s up to %d instances. Hold on a sec ... ", s.getName(), replicas));
+        startSvc(newDescriptor);
+        System.out.println("DONE");
+    }
+
+    private void scaleDown(Service s, int replicas) {
+        List<ServiceInstance> asList = s.getInstances().stream().collect(Collectors.toList());
+        Set<ServiceInstance> killableInstances = IntStream
+                .range(0, s.getInstances().size() - replicas)
+                .mapToObj(i -> asList.get(i))
+                .collect(Collectors.toSet());
+
+
+        Service toBeCleaned = new Service(s.getName(), killableInstances,
+                newDescriptor(s.getDescriptor(), killableInstances.size(), false));
+
+        contextBuilder.clearContext(
+                new DefaultServiceContext(Stream.of(toBeCleaned).collect(Collectors.toSet())));
+        ServiceContextProvider.setSvcContext(cleanContext(toBeCleaned));
+    }
+
+    private ServiceContext cleanContext(Service toBeCleaned) {
+        Set<Service> currentServices = ServiceContextProvider.getSvcContext().getServices();
+
+        Set<Service> newServices = currentServices.stream()
+                .map(service -> {
+                    if(service.getName().equals(toBeCleaned.getName())) {
+                        return new Service(service.getName(),
+                                service.getInstances()
+                                    .stream()
+                                    .filter(si -> !toBeCleaned.getInstances().contains(si))
+                                    .collect(Collectors.toSet()),
+                                toBeCleaned.getDescriptor());
+                    }
+                    return service;
+                })
+                .collect(Collectors.toSet());
+        return new DefaultServiceContext(newServices);
+    }
+
+    private ServiceDescriptor newDescriptor(ServiceDescriptor sd, int instances, boolean randomiseContainerName) {
+        return DefaultServiceDescriptor.builder()
+                .containerName(randomiseContainerName? randomise(sd.getContainerName()) : sd.getContainerName())
+                .customisationHook(sd.getCustomisationHook())
+                .instance(sd.getInstance())
+                .options(sd.getOptions())
+                .priority(sd.getPriority())
+                .svcDefinition(sd.getSvcDefinition())
+                .replicas(instances)
+                .build();
+    }
+
+    private String randomise(String containerName) {
+        if(containerName == null) {
+            containerName = "";
+        }
+        byte[] bytes = new byte[4];
+        SecureRandom sr = new SecureRandom();
+        sr.nextBytes(bytes);
+        return containerName.concat("-")
+                .concat(Base64.getEncoder().encodeToString(bytes)
+                .replaceAll("=", "0")
+                .replaceAll("\\+", "1"));
     }
 
 }
