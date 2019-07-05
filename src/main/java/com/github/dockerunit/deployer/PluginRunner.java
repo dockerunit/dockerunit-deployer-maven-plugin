@@ -1,6 +1,7 @@
 package com.github.dockerunit.deployer;
 
 import com.github.dockerunit.deployer.spring.ShellLauncher;
+import org.apache.maven.model.Resource;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -46,6 +47,11 @@ public class PluginRunner extends AbstractMojo {
             List<String> args = new ArrayList<>();
             args.add(className);
             List<String> testClasspathElements = project.getTestClasspathElements();
+            List<Resource> testResources = project.getTestResources();
+            testClasspathElements.addAll(testResources
+                    .stream()
+                    .map(res -> res.getDirectory())
+                    .collect(Collectors.toSet()));
             args.addAll(testClasspathElements.stream()
                     .map(elem -> Arrays.asList("--classpath", elem))
                     .flatMap(Collection::stream)

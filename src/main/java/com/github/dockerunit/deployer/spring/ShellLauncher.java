@@ -6,7 +6,7 @@ import com.github.dockerunit.core.internal.ServiceContextBuilder;
 import com.github.dockerunit.core.internal.ServiceContextBuilderFactory;
 import com.github.dockerunit.core.internal.reflect.DependencyDescriptorBuilderFactory;
 import com.github.dockerunit.core.internal.reflect.UsageDescriptorBuilder;
-import com.github.dockerunit.deployer.SvcClassLoader;
+import com.github.dockerunit.deployer.SvcClassLoadingManager;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStyle;
 import org.springframework.boot.SpringApplication;
@@ -39,11 +39,11 @@ public class ShellLauncher {
 
     public static void run(String[] args) throws Exception {
         initDiscovery();
-        Class<?> svcClass = SvcClassLoader.loadSvcClass(args[0], Arrays.asList(Arrays.copyOfRange(args, 1, args.length))
+        SvcClassLoadingManager.initialiseClassLoader(Arrays.asList(Arrays.copyOfRange(args, 1, args.length))
                 .stream()
                 .filter(arg -> !arg.equals(CLASSPATH_OPTION))
                 .collect(Collectors.toList()));
-
+        SvcClassLoadingManager.loadClass(args[0]);
         SpringApplication.run(ShellLauncher.class, args);
     }
 

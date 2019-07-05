@@ -11,6 +11,7 @@ import org.springframework.shell.standard.ShellOption;
 import org.springframework.shell.table.Table;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -31,7 +32,7 @@ public class ListCommands {
                 data[i][1] = String.format(" %d ", services.get(i).getInstances().size());
         }
 
-        return TableFactory.createTable(new String[] {"name", "replicas"}, data );
+        return TableFactory.createTable(new String[] {"name", "replicas"}, data);
     }
 
     @ShellMethod(value = "Lists the currently running service instances", key = {"get-instances", "list-instances"})
@@ -41,6 +42,7 @@ public class ListCommands {
                 .stream()
                 .filter(s -> svcName == null ? true : svcName.equals(s.getName()))
                 .collect(Collectors.toList());
+        services.sort(Comparator.comparing(Service::getName));
 
         int allInstances = services.stream()
                 .map(svc -> svc.getInstances())
@@ -52,25 +54,26 @@ public class ListCommands {
 
         String[][] data = new String[allInstances][tableHeader.length];
 
+        int row = 0;
         for (int i = 0; i < services.size(); i++) {
             Service s = services.get(i);
             List<ServiceInstance> instances = s.getInstances().stream().collect(Collectors.toList());
             for(int j = 0; j < instances.size(); j++) {
                 ServiceInstance si = instances.get(j);
-                data[i + j] = new String[] {
+                data[row] = new String[] {
                         String.format(" %s ", s.getName()),
                         String.format(" %s ", si.getContainerName().substring(1)),
                         String.format(" %s ", si.getContainerId().substring(0, 12)),
                         String.format(" %s ", si.getGatewayIp()),
                         String.format(" %s ", si.getContainerIp()),
-                        String.format(" %d ", si.getPort()),
+                        String.format(si.getPort() == 0 ? "%s" :" %d ", si.getPort() == 0 ? "N/A" : si.getPort()),
                         String.format(" %s ", si.getStatus().toString())
                 };
+                row++;
             }
         }
 
-
-        return TableFactory.createTable(tableHeader, data );
+        return TableFactory.createTable(tableHeader, data);
     }
 
 }
