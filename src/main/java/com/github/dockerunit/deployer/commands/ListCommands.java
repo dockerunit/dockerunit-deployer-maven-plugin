@@ -13,7 +13,6 @@ import org.springframework.shell.table.Table;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @ShellComponent
@@ -50,7 +49,7 @@ public class ListCommands {
                 .collect(Collectors.toList())
                 .size();
 
-        String[] tableHeader = {"svc", "container-name", "container-id", "gateway", "container-ip", "port", "status"};
+        String[] tableHeader = {"svc", "container-name", "container-id", "gateway", "gateway-port", "container-ip", "container-port", "status"};
 
         String[][] data = new String[allInstances][tableHeader.length];
 
@@ -64,9 +63,10 @@ public class ListCommands {
                         String.format(" %s ", s.getName()),
                         String.format(" %s ", si.getContainerName().substring(1)),
                         String.format(" %s ", si.getContainerId().substring(0, 12)),
-                        String.format(" %s ", si.getGatewayIp()),
+                        String.format(" %s ", si.getGatewayAddress()),
+                        String.format(si.getGatewayPort() == 0 ? "%s" :" %d ", si.getGatewayPort() == 0 ? "N/A" : si.getGatewayPort()),
                         String.format(" %s ", si.getContainerIp()),
-                        String.format(si.getPort() == 0 ? "%s" :" %d ", si.getPort() == 0 ? "N/A" : si.getPort()),
+                        String.format(si.getContainerPort() == 0 ? "%s" :" %d ", si.getContainerPort() == 0 ? "N/A" : si.getContainerPort()),
                         String.format(" %s ", si.getStatus().toString())
                 };
                 row++;
