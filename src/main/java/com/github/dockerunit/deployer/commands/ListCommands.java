@@ -64,9 +64,12 @@ public class ListCommands {
                         String.format(" %s ", si.getContainerName().substring(1)),
                         String.format(" %s ", si.getContainerId().substring(0, 12)),
                         String.format(" %s ", si.getGatewayAddress()),
-                        String.format(si.getGatewayPort() == 0 ? "%s" :" %d ", si.getGatewayPort() == 0 ? "N/A" : si.getGatewayPort()),
+                        String.format(si.getGatewayPort() == 0 ? "%s" :" %d ",
+                                si.getGatewayPort() == 0 ? "N/A" : si.getGatewayPort()),
                         String.format(" %s ", si.getContainerIp()),
-                        String.format(si.getContainerPort() == 0 ? "%s" :" %d ", si.getContainerPort() == 0 ? "N/A" : si.getContainerPort()),
+                        String.format(
+                                si.getContainerPort() == 0 ? "%s" :" %d ",
+                                si.getContainerPort() == 0 ? "N/A" : si.getContainerPort()),
                         String.format(" %s ", si.getStatus().toString())
                 };
                 row++;
